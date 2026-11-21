@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Navee ST3 Pro – Speed Tool</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Navee ST3 Pro · Speed-Tool</h1>
+    <div class="sub">Web-Bluetooth-Werkzeug zum Setzen der Sollgeschwindigkeit (20–50 km/h)</div>
+    <div class="status"><span id="statusDot" class="dot off"></span><span id="statusText">getrennt</span></div>
+  </header>
+
+  <main>
+    <div class="warn-box">
+      <strong>⚠️ Nur für geschlossene Teststrecken / Privatgelände.</strong>
+      Höhere Geschwindigkeiten als die Werkseinstellung können Bremsen, Reifen und Rahmen überlasten,
+      die Garantie erlöschen lassen und machen den Scooter im öffentlichen Straßenverkehr (StVO/eKFV)
+      unzulässig. Fahre defensiv, mit Schutzausrüstung, und prüfe die Rechtslage deines Landes.
+    </div>
+
+    <!-- Verbindung -->
+    <div class="card">
+      <h2>1 · Verbindung</h2>
+      <div class="row">
+        <div>
+          <label for="namePrefix">Namensfilter (optional)</label>
+          <input type="text" id="namePrefix" placeholder="leer lassen = alle Geräte zeigen" />
+        </div>
+        <div>
+          <label for="serviceUuid">Service-UUID</label>
+          <input type="text" id="serviceUuid" placeholder="z.B. fff0 (leer = alle anzeigen)" />
+        </div>
+      </div>
+      <label for="extraServices">Zusätzliche Service-UUIDs (optional, kommagetrennt)</label>
+      <input type="text" id="extraServices" placeholder="z.B. fee7, 6e400001-b5a3-f393-e0a9-e50e24dcca9e" />
+      <p class="hint">Der Browser zeigt nur Dienste, die hier vor dem Verbinden angemeldet sind. Gängige Kandidaten sind schon eingebaut.</p>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn" id="connectBtn">Verbinden</button>
+        <button class="btn secondary" id="discoverBtn" disabled>Dienste scannen</button>
+        <button class="btn danger" id="disconnectBtn" disabled>Trennen</button>
+      </div>
+      <p class="hint">Tipp: Zuerst mit leerer Service-UUID verbinden, dann „Dienste scannen" — darunter kannst du Write/Notify direkt übernehmen.</p>
+    </div>
+
+    <!-- GATT Explorer -->
+    <div class="card">
+      <h2>2 · GATT-Explorer</h2>
+      <div id="gatt"><p class="hint">Noch nichts gescannt. Nach dem Verbinden „Dienste scannen" drücken.</p></div>
+    </div>
+
+    <!-- Protokoll -->
+    <div class="card">
+      <h2>3 · Protokoll / Kommando</h2>
+      <div class="row">
+        <div>
+          <label for="writeCharUuid">Write-Characteristic-UUID</label>
+          <input type="text" id="writeCharUuid" placeholder="z.B. 0000fff2-…" />
+        </div>
+        <div>
+          <label for="notifyCharUuid">Notify-Characteristic-UUID (optional)</label>
+          <input type="text" id="notifyCharUuid" placeholder="z.B. 0000fff1-…" />
+        </div>
+      </div>
+
+      <label for="template">Kommando-Template (Hex, Platzhalter: {speed} {speed_lo} {speed_hi} {len} {chk})</label>
+      <textarea id="template" rows="2">5A A5 02 20 7D {speed} {chk}</textarea>
+      <p class="hint">Dies ist ein <strong>Platzhalter-Frame</strong> – ersetze es durch das reale Navee-Frame aus deiner Protokollanalyse (HCI-Snoop-Log / nRF Connect).</p>
+
+      <div class="row">
+        <div>
+          <label for="checksum">Checksumme</label>
+          <select id="checksum">
+            <option value="none">keine</option>
+            <option value="sum8">Summe 8-bit</option>
+            <option value="xor8">XOR 8-bit</option>
+            <option value="sum16_le">Summe 16-bit (LE)</option>
+            <option value="ninebot">Ninebot (~Summe, LE)</option>
+          </select>
+        </div>
+        <div>
+          <label for="checksumScope">Checksummen-Bereich</label>
+          <select id="checksumScope">
+            <option value="all">alle Bytes</option>
+            <option value="after_header">nach Header</option>
+          </select>
+        </div>
+        <div>
+          <label for="checksumHeaderLen">Header-Länge</label>
+          <input type="number" id="checksumHeaderLen" min="0" max="8" value="2" />
+        </div>
+        <div>
+          <label for="scale">Speed-Skalierung</label>
+          <input type="number" id="scale" min="1" step="1" value="1" />
+        </div>
+      </div>
+
+      <label class="checkbox" style="margin-top:12px;">
+        <input type="checkbox" id="withResponse" />
+        <span>Mit Antwort schreiben (Write&nbsp;With&nbsp;Response). Standard aus = Write Without Response.</span>
+      </label>
+
+      <div class="btn-row">
+        <button class="btn secondary" id="resetCfgBtn">Konfiguration zurücksetzen</button>
+      </div>
+    </div>
+
+    <!-- Geschwindigkeit -->
+    <div class="card">
+      <h2>4 · Geschwindigkeit setzen</h2>
+      <div class="speed-wrap">
+        <span class="speed-num" id="speedValue">25</span><span class="speed-unit">km/h</span>
+      </div>
+      <input type="range" id="speed" min="20" max="50" step="1" value="25" />
+      <div class="speed-ticks"><span>20</span><span>30</span><span>40</span><span>50</span></div>
+
+      <label>Vorschau der zu sendenden Bytes</label>
+      <div class="preview" id="preview">—</div>
+
+      <label class="checkbox">
+        <input type="checkbox" id="ackSafety" />
+        <span>Ich fahre auf geschlossener Strecke und habe die Sicherheitshinweise gelesen (nötig ab &gt;25&nbsp;km/h).</span>
+      </label>
+
+      <div class="btn-row">
+        <button class="btn" id="sendBtn" disabled>An Scooter senden</button>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="card">
+      <h2>5 · Protokoll / Log</h2>
+      <div id="log"></div>
+    </div>
+
+    <details>
+      <summary>Hinweise zu Web Bluetooth</summary>
+      <p class="hint">
+        Web Bluetooth funktioniert in Chrome/Edge auf Android und Desktop und benötigt einen sicheren Kontext
+        (HTTPS oder <code>localhost</code>). Auf iOS ist es in Safari nicht verfügbar (dort nur über
+        Spezialbrowser wie Bluefy). Die App speichert deine Konfiguration lokal im Browser.
+      </p>
+    </details>
+  </main>
+
+  <script src="js/protocol.js"></script>
+  <script src="js/ble.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
