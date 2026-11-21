@@ -19,6 +19,8 @@ const CANDIDATE_SERVICES = [
   '49535343-fe7d-4ae5-8fa9-9fafd205e455',                     // ISSC Transparent UART
   '00010203-0405-0607-0809-0a0b0c0d1910',                     // Telink
   '0000fff0-0000-1000-8000-00805f9b34fb',
+  '0000d0ff-3c17-d293-8e48-14fe2e4da212',                     // beim ST3 Pro gefunden: B001 read, B002 write, B003 notify
+  '87290102-3c51-43b1-a1a9-11b9dc38478b',                     // beim ST3 Pro gefunden: nur read
 ];
 
 /** "fff0" / "0xfff0" / "0000fff0-…" -> kanonische 128-Bit-UUID (lowercase) oder null. */
