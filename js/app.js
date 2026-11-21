@@ -13,6 +13,15 @@
     logEl.scrollTop = logEl.scrollHeight;
   }
 
+
+  // Bluefy/WebBLE liefern teils Fehler ohne .message -> immer etwas Lesbares ausgeben.
+  function errText(e) {
+    if (e == null) return '(unbekannter Fehler)';
+    if (typeof e === 'string') return e;
+    const parts = [e.name, e.message].filter(Boolean);
+    return parts.length ? parts.join(': ') : String(e);
+  }
+
   const ble = new window.BleManager(log);
 
   // ---------- Konfiguration laden/speichern ----------
@@ -97,7 +106,7 @@
       $('preview').textContent = hex || '(leer)';
       $('preview').classList.remove('error');
     } catch (e) {
-      $('preview').textContent = 'Fehler: ' + e.message;
+      $('preview').textContent = 'Fehler: ' + errText(e);
       $('preview').classList.add('error');
     }
   }
@@ -134,16 +143,16 @@
 
       if (cfg.serviceUuid && cfg.notifyCharUuid) {
         try { await ble.setupNotify(cfg.serviceUuid, cfg.notifyCharUuid); }
-        catch (e) { log('Notify konnte nicht eingerichtet werden: ' + e.message); }
+        catch (e) { log('Notify konnte nicht eingerichtet werden: ' + errText(e)); }
       }
       if (cfg.serviceUuid && cfg.writeCharUuid) {
         try { await ble.setupWrite(cfg.serviceUuid, cfg.writeCharUuid); }
-        catch (e) { log('Schreib-Characteristic konnte nicht eingerichtet werden: ' + e.message); }
+        catch (e) { log('Schreib-Characteristic konnte nicht eingerichtet werden: ' + errText(e)); }
       } else {
         log('ℹ️ Service/Write-UUID noch nicht gesetzt — nutze "Dienste scannen", um sie zu finden.');
       }
     } catch (e) {
-      log('❌ Verbindung fehlgeschlagen: ' + e.message);
+      log('❌ Verbindung fehlgeschlagen: ' + errText(e));
       setConnected(false);
     }
   }
@@ -193,7 +202,7 @@
           $('serviceUuid').value = b.dataset.svc; $('notifyCharUuid').value = b.dataset.uuid;
         }));
     } catch (e) {
-      log('❌ Scan fehlgeschlagen: ' + e.message);
+      log('❌ Scan fehlgeschlagen: ' + errText(e));
     }
   }
 
@@ -204,7 +213,7 @@
     if (!ble.writeChar) {
       if (cfg.serviceUuid && cfg.writeCharUuid) {
         try { await ble.setupWrite(cfg.serviceUuid, cfg.writeCharUuid); }
-        catch (e) { log('❌ Write-Setup fehlgeschlagen: ' + e.message); return; }
+        catch (e) { log('❌ Write-Setup fehlgeschlagen: ' + errText(e)); return; }
       } else {
         log('❌ Bitte zuerst Service- und Write-Characteristic-UUID setzen (via "Dienste scannen").');
         return;
@@ -227,7 +236,7 @@
         checksumHeaderLen: cfg.checksumHeaderLen,
       });
     } catch (e) {
-      log('❌ Kommando-Bau fehlgeschlagen: ' + e.message);
+      log('❌ Kommando-Bau fehlgeschlagen: ' + errText(e));
       return;
     }
 
@@ -235,7 +244,7 @@
       await ble.write(cmd.bytes, { withResponse: cfg.withResponse });
       log(`⇒ Gesendet (${speed} km/h): ${cmd.hex}`);
     } catch (e) {
-      log('❌ Senden fehlgeschlagen: ' + e.message);
+      log('❌ Senden fehlgeschlagen: ' + errText(e));
     }
   }
 
