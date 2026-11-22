@@ -82,7 +82,7 @@ class BleManager {
     const optionalServices = [...new Set([...(primary ? [primary] : []), ...extras, ...candidates])];
 
     const filters = [];
-    if (primary) filters.push({ services: [primary] });
+    // Service-UUID NICHT als Scan-Filter nutzen: viele Scooter kuendigen ihre Dienste nicht im Advertising an.
     if (namePrefix) filters.push({ namePrefix });
 
     const requestOpts = filters.length
