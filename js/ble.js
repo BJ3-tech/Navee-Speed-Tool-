@@ -166,7 +166,7 @@ class BleManager {
    * "NotSupportedError: GATT operation failed for unknown reason" ab (CoreBluetooth braucht einen
    * Moment, bis der GATT-Cache des Geräts bereitsteht). Darum hier ein paar Wiederholungsversuche.
    */
-  async setupNotify(serviceUuid, charUuid, { retries = 4, delayMs = 400 } = {}) {
+  async setupNotify(serviceUuid, charUuid, { retries = 1, delayMs = 300 } = {}) {
     this.notifyChar = await this._getChar(serviceUuid, charUuid);
     for (let attempt = 1; ; attempt++) {
       try {
