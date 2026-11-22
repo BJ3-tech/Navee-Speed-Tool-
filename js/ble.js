@@ -93,12 +93,19 @@ class BleManager {
     this.device = await navigator.bluetooth.requestDevice(requestOpts);
     this.log(`Gerät gewählt: ${this.device.name || '(ohne Namen)'} [${this.device.id}]`);
 
-    this.device.addEventListener('gattserverdisconnected', () => {
+    // Chrome liefert für dasselbe physische Geraet oft dasselbe BluetoothDevice-Objekt zurueck,
+    // auch bei einem neuen requestDevice()-Aufruf. Ohne das hier wuerden sich bei jedem erneuten
+    // Verbinden weitere Listener aufstapeln und "Verbindung getrennt" mehrfach geloggt werden.
+    if (this._onGattDisconnected) {
+      this.device.removeEventListener('gattserverdisconnected', this._onGattDisconnected);
+    }
+    this._onGattDisconnected = () => {
       this.log('⚠️ Verbindung getrennt.');
       this.writeChar = null;
       this.notifyChar = null;
       if (this.onDisconnect) this.onDisconnect();
-    });
+    };
+    this.device.addEventListener('gattserverdisconnected', this._onGattDisconnected);
 
     this.log('Verbinde mit GATT-Server …');
     this.server = await this.device.gatt.connect();
