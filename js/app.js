@@ -194,12 +194,23 @@
       box.querySelectorAll('.use-svc').forEach((b) =>
         b.addEventListener('click', () => { $('serviceUuid').value = b.dataset.uuid; previewCommand(); }));
       box.querySelectorAll('.use-write').forEach((b) =>
-        b.addEventListener('click', () => {
+        b.addEventListener('click', async () => {
           $('serviceUuid').value = b.dataset.svc; $('writeCharUuid').value = b.dataset.uuid; previewCommand();
+          saveCfg(readFormCfg());
+          // Sofort einrichten, falls noch verbunden (der Scooter trennt die Verbindung schnell).
+          if (ble.isConnected) {
+            try { await ble.setupWrite(b.dataset.svc, b.dataset.uuid); }
+            catch (e) { log('❌ Write-Setup fehlgeschlagen: ' + errText(e)); }
+          }
         }));
       box.querySelectorAll('.use-notify').forEach((b) =>
-        b.addEventListener('click', () => {
+        b.addEventListener('click', async () => {
           $('serviceUuid').value = b.dataset.svc; $('notifyCharUuid').value = b.dataset.uuid;
+          saveCfg(readFormCfg());
+          if (ble.isConnected) {
+            try { await ble.setupNotify(b.dataset.svc, b.dataset.uuid); }
+            catch (e) { log('❌ Notify-Setup fehlgeschlagen: ' + errText(e)); }
+          }
         }));
     } catch (e) {
       log('❌ Scan fehlgeschlagen: ' + errText(e));
