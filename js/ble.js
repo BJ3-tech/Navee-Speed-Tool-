@@ -33,6 +33,11 @@ function normalizeUuid(input) {
   return null;
 }
 
+const PROPERTY_NAMES = [
+  'broadcast', 'read', 'writeWithoutResponse', 'write', 'notify', 'indicate',
+  'authenticatedSignedWrites', 'reliableWrite', 'writableAuxiliaries',
+];
+
 class BleManager {
   constructor(logger) {
     this.log = logger || (() => {});
@@ -129,9 +134,8 @@ class BleManager {
         uuid: svc.uuid,
         characteristics: chars.map((c) => ({
           uuid: c.uuid,
-          properties: Object.entries(c.properties)
-            .filter(([, v]) => v)
-            .map(([k]) => k),
+          // Chrome liefert die Flags als Prototyp-Getter (Object.entries waere leer) -> Namen explizit abfragen.
+          properties: PROPERTY_NAMES.filter((k) => c.properties && c.properties[k]),
         })),
       });
     }
