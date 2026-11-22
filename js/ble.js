@@ -160,10 +160,24 @@ class BleManager {
     this.log(`Schreib-Characteristic bereit: ${charUuid}`);
   }
 
-  /** Abonniert Notifications (für Status/ACK vom Scooter). */
-  async setupNotify(serviceUuid, charUuid) {
+  /**
+   * Abonniert Notifications (für Status/ACK vom Scooter).
+   * Direkt nach dem Verbinden lehnt Chrome auf macOS startNotifications() manchmal kurzzeitig mit
+   * "NotSupportedError: GATT operation failed for unknown reason" ab (CoreBluetooth braucht einen
+   * Moment, bis der GATT-Cache des Geräts bereitsteht). Darum hier ein paar Wiederholungsversuche.
+   */
+  async setupNotify(serviceUuid, charUuid, { retries = 4, delayMs = 400 } = {}) {
     this.notifyChar = await this._getChar(serviceUuid, charUuid);
-    await this.notifyChar.startNotifications();
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await this.notifyChar.startNotifications();
+        break;
+      } catch (e) {
+        if (attempt > retries) throw e;
+        this.log(`Notify-Versuch ${attempt} fehlgeschlagen (${e.name || e}), versuche erneut …`);
+        await new Promise((r) => setTimeout(r, delayMs * attempt));
+      }
+    }
     this.notifyChar.addEventListener('characteristicvaluechanged', (ev) => {
       if (this.onNotify) this.onNotify(ev.target.value);
     });
